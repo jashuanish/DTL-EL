@@ -27,8 +27,16 @@ import { KnowledgeGraph } from "./KnowledgeGraph";
 import { ConceptLearning } from "./ConceptLearning";
 import { PracticeScreen } from "./PracticeScreen";
 import { ReflectionScreen } from "./ReflectionScreen";
+import { ProfileScreen } from "./ProfileScreen";
+import { AuthModal } from "./AuthModal";
 
-type Screen = "home" | "dashboard" | "concept" | "practice" | "reflection" | "graph";
+type AuthUser = {
+  id: string;
+  email: string;
+  displayName?: string;
+};
+
+type Screen = "home" | "dashboard" | "concept" | "practice" | "reflection" | "graph" | "profile";
 
 export type LearningSession = {
   topic: string;
@@ -123,7 +131,13 @@ function AnimatedBackground() {
   );
 }
 
-function Navbar({ currentScreen, setScreen }: { currentScreen: Screen; setScreen: (s: Screen) => void }) {
+function Navbar({ currentScreen, setScreen, user, onLogout, onOpenAuth }: { 
+  currentScreen: Screen; 
+  setScreen: (s: Screen) => void;
+  user: AuthUser | null;
+  onLogout: () => void;
+  onOpenAuth: (mode: "login" | "signup") => void;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -168,14 +182,43 @@ function Navbar({ currentScreen, setScreen }: { currentScreen: Screen; setScreen
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <button className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all flex items-center gap-2">
-            <LogIn className="w-4 h-4" />
-            Login
-          </button>
-          <button className="px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-cyan-400 to-violet-500 text-white hover:opacity-90 transition-all flex items-center gap-2">
-            <User className="w-4 h-4" />
-            Sign Up
-          </button>
+          {user ? (
+            <>
+              <button
+                onClick={() => setScreen("profile")}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
+                  currentScreen === "profile"
+                    ? "bg-cyan-400/20 text-cyan-400"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                }`}
+              >
+                <User className="w-4 h-4" />
+                {user.displayName || user.email.split("@")[0]}
+              </button>
+              <button
+                onClick={onLogout}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => onOpenAuth("login")}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all flex items-center gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                Login
+              </button>
+              <button
+                onClick={() => onOpenAuth("signup")}
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-cyan-400 to-violet-500 text-white hover:opacity-90 transition-all"
+              >
+                Sign Up
+              </button>
+            </>
+          )}
         </div>
 
         <button
@@ -212,12 +255,51 @@ function Navbar({ currentScreen, setScreen }: { currentScreen: Screen; setScreen
             </button>
           ))}
           <div className="border-t border-white/10 mt-2 pt-2 space-y-2">
-            <button className="w-full px-4 py-3 rounded-xl text-sm font-medium hover:bg-white/5 transition-all text-left">
-              Login
-            </button>
-            <button className="w-full px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-cyan-400 to-violet-500 text-white">
-              Sign Up
-            </button>
+            {user ? (
+              <>
+                <button
+                  onClick={() => {
+                    setScreen("profile");
+                    setMenuOpen(false);
+                  }}
+                  className="w-full px-4 py-3 rounded-xl text-sm font-medium hover:bg-white/5 transition-all text-left flex items-center gap-2"
+                >
+                  <User className="w-4 h-4" />
+                  {user.displayName || user.email.split("@")[0]}
+                </button>
+                <button
+                  onClick={() => {
+                    onLogout();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full px-4 py-3 rounded-xl text-sm font-medium hover:bg-white/5 transition-all text-left"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    onOpenAuth("login");
+                    setMenuOpen(false);
+                  }}
+                  className="w-full px-4 py-3 rounded-xl text-sm font-medium hover:bg-white/5 transition-all text-left flex items-center gap-2"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Login
+                </button>
+                <button
+                  onClick={() => {
+                    onOpenAuth("signup");
+                    setMenuOpen(false);
+                  }}
+                  className="w-full px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-cyan-400 to-violet-500 text-white"
+                >
+                  Sign Up
+                </button>
+              </>
+            )}
           </div>
         </motion.div>
       )}
@@ -225,7 +307,12 @@ function Navbar({ currentScreen, setScreen }: { currentScreen: Screen; setScreen
   );
 }
 
-function HeroSection({ setScreen, updateSession }: { setScreen: (s: Screen) => void; updateSession: (u: Partial<LearningSession>) => void }) {
+function HeroSection({ setScreen, updateSession, user, onOpenAuth }: { 
+  setScreen: (s: Screen) => void; 
+  updateSession: (u: Partial<LearningSession>) => void;
+  user: AuthUser | null;
+  onOpenAuth: (mode: "login" | "signup") => void;
+}) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleExplore = (topic: string) => {
@@ -310,21 +397,31 @@ function HeroSection({ setScreen, updateSession }: { setScreen: (s: Screen) => v
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
           >
-            <button
-              onClick={() => setScreen("dashboard")}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-400 to-violet-500 text-white font-medium hover:opacity-90 transition-all flex items-center gap-2"
-            >
-              <Play className="w-5 h-5" />
-              Continue Learning
-            </button>
-            <button className="px-6 py-3 rounded-xl glass hover:bg-white/10 transition-all flex items-center gap-2 font-medium">
-              <User className="w-5 h-5" />
-              Create Profile
-            </button>
-            <button className="px-6 py-3 rounded-xl glass hover:bg-white/10 transition-all flex items-center gap-2 font-medium">
-              <LogIn className="w-5 h-5" />
-              Login
-            </button>
+              <button
+                onClick={() => setScreen("dashboard")}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-400 to-violet-500 text-white font-medium hover:opacity-90 transition-all flex items-center gap-2"
+              >
+                <Play className="w-5 h-5" />
+                Continue Learning
+              </button>
+              {!user && (
+                <>
+                  <button 
+                    onClick={() => onOpenAuth("signup")}
+                    className="px-6 py-3 rounded-xl glass hover:bg-white/10 transition-all flex items-center gap-2 font-medium"
+                  >
+                    <User className="w-5 h-5" />
+                    Create Profile
+                  </button>
+                  <button 
+                    onClick={() => onOpenAuth("login")}
+                    className="px-6 py-3 rounded-xl glass hover:bg-white/10 transition-all flex items-center gap-2 font-medium"
+                  >
+                    <LogIn className="w-5 h-5" />
+                    Login
+                  </button>
+                </>
+              )}
           </motion.div>
         </motion.div>
 
@@ -566,10 +663,16 @@ function Footer() {
   );
 }
 
-function HomePage({ setScreen, session, updateSession }: { setScreen: (s: Screen) => void; session: LearningSession; updateSession: (u: Partial<LearningSession>) => void }) {
+function HomePage({ setScreen, session, updateSession, user, onOpenAuth }: { 
+  setScreen: (s: Screen) => void; 
+  session: LearningSession; 
+  updateSession: (u: Partial<LearningSession>) => void;
+  user: AuthUser | null;
+  onOpenAuth: (mode: "login" | "signup") => void;
+}) {
   return (
     <>
-      <HeroSection setScreen={setScreen} updateSession={updateSession} />
+      <HeroSection setScreen={setScreen} updateSession={updateSession} user={user} onOpenAuth={onOpenAuth} />
       <AgentsSection />
       <FeaturesSection />
       <StatsSection />
@@ -605,6 +708,46 @@ export function LearningPlatform() {
     problemsSolved: 0,
     problemsCorrect: 0,
   });
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (data.user) {
+        setUser(data.user);
+        localStorage.setItem("neurlearn_user_id", data.user.id);
+      }
+    } catch (error) {
+      console.error("Auth check failed:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setUser(null);
+      localStorage.removeItem("neurlearn_user_id");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  const handleAuthSuccess = (authUser: AuthUser) => {
+    setUser(authUser);
+    localStorage.setItem("neurlearn_user_id", authUser.id);
+  };
+
+  const openAuth = (mode: "login" | "signup") => {
+    setAuthMode(mode);
+    setAuthModalOpen(true);
+  };
 
   const updateSession = (updates: Partial<LearningSession>) => {
     setSession((prev) => ({ ...prev, ...updates }));
@@ -614,15 +757,37 @@ export function LearningPlatform() {
     <div className="relative min-h-screen">
       <AnimatedBackground />
       <div className="relative z-10">
-        <Navbar currentScreen={currentScreen} setScreen={setScreen} />
+        <Navbar 
+          currentScreen={currentScreen} 
+          setScreen={setScreen} 
+          user={user}
+          onLogout={handleLogout}
+          onOpenAuth={openAuth}
+        />
         
-        {currentScreen === "home" && <HomePage setScreen={setScreen} session={session} updateSession={updateSession} />}
+        {currentScreen === "home" && (
+          <HomePage 
+            setScreen={setScreen} 
+            session={session} 
+            updateSession={updateSession}
+            user={user}
+            onOpenAuth={openAuth}
+          />
+        )}
         {currentScreen === "dashboard" && <Dashboard />}
         {currentScreen === "concept" && <ConceptLearning session={session} updateSession={updateSession} setScreen={setScreen} />}
         {currentScreen === "practice" && <PracticeScreen session={session} updateSession={updateSession} setScreen={setScreen} />}
         {currentScreen === "reflection" && <ReflectionScreen session={session} setScreen={setScreen} />}
         {currentScreen === "graph" && <GraphScreen />}
+        {currentScreen === "profile" && <ProfileScreen onBack={() => setScreen("home")} />}
       </div>
+
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+        initialMode={authMode}
+      />
     </div>
   );
 }
